@@ -12,7 +12,7 @@ interface Message {
 
 const openai = new OpenAI({
     dangerouslyAllowBrowser: true,
-    apiKey: process.env.NEXT_PUBLIC_KEY,
+    apiKey: process.env.NEXT_PUBLIC_KEY!,
 });
 
 const getHistory = (debt: string):  OpenAI.Chat.Completions.ChatCompletionMessageParam[] => {
