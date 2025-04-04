@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import {useState, useEffect, useRef} from 'react';
 import { useSearchParams} from "next/navigation";
+import './style.css';
 
 interface Message {
     sender: string;
@@ -14,6 +15,15 @@ const Chat = () => {
     const [input, setInput] = useState<string>('');
     const [url, setUrl] = useState<string>('');
     const [answer, setAnswer] = useState<string>('');
+    const messagesEndRef = useRef<HTMLDivElement | null>(null);
+
+    const scrollToBottom = () => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    };
+
+    useEffect(() => {
+        scrollToBottom();
+    }, [messages, answer]);
 
     useEffect(() => {
         sendMessages('Hi!', searchParams.get('debt') || '2000');
@@ -100,8 +110,9 @@ const Chat = () => {
                         <strong>GPT: </strong>{answer}
                     </div>)}
                     {url && <a className='link' href={url}>Go to pay</a>}
+                    <div ref={messagesEndRef} />
                 </div>
-                <form onSubmit={handleSubmit} style={{ marginTop: '8px', display: 'flex' }}>
+                <form onSubmit={handleSubmit} style={{ marginTop: '8px', display: 'flex', gap: '16px', alignItems: 'center' }}>
                     <input
                         type="text"
                         value={input}
@@ -109,7 +120,7 @@ const Chat = () => {
                         placeholder="Type your message"
                         style={{ flexGrow: 1, padding: '8px', border: '1px solid #ccc', borderRadius: '4px 0 0 4px' }}
                     />
-                    <button type="submit" style={{ padding: '8px', backgroundColor: '#007bff', color: 'white', border: 'none', borderRadius: '0 4px 4px 0', cursor: 'pointer' }}>Send</button>
+                    <button type="submit" style={{ padding: '8px', backgroundColor: url ? '#7f888d' : '#007bff', color: 'white', border: 'none', borderRadius: '8px', cursor: url ? 'auto' : 'pointer', minWidth: '100px' }}>Send</button>
                 </form>
             </div>
         </div>
