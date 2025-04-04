@@ -1,41 +1,12 @@
 'use client';
 
-import {useState, useEffect, useRef} from 'react';
+import { useState, useEffect } from 'react';
 import { useSearchParams} from "next/navigation";
-import OpenAI from "openai";
-import './style.css'
 
 interface Message {
     sender: string;
     content: string;
 }
-
-const openai = new OpenAI({
-    dangerouslyAllowBrowser: true,
-    apiKey: process.env.NEXT_PUBLIC_KEY!,
-});
-
-const getHistory = (debt: string):  OpenAI.Chat.Completions.ChatCompletionMessageParam[] => {
-    return [{"role": "system", "content": "You are an AI chatbot for debt negotiation. "+
-            `The current outstanding debt is ${debt}$. `+
-            "Suggest realistic payment plans: monthly, biweekly, or weekly. "+
-            "If the user proposes an unreasonably low amount (e.g., $5 per month), "+
-            "counter with fair alternatives. "+
-            "Once an agreement is reached, confirm the terms and provide a payment link in this format and return the link with just a string without markdown: "+
-            "https://collectwise.com/payments?termLength={termLength}&totalDebtAmount={totalDebtAmount}&termPaymentAmount={termPaymentAmount}" +
-            "Here is some example: Chatbot: \"Hello! Our records show that you currently owe $2400. Are you able to resolve this debt today?\"" +
-            "User: \"I just got laid off and can’t afford to pay that right now.\"" +
-            "Chatbot: \"I understand. We can break this into smaller payments. Would $800 every month for the next 3 months be manageable for you?\"" +
-            "User: \"That’s still a bit too high for me.\"" +
-            "Chatbot: \"No worries! If we extend it to six months, your payment would be $400 per month. How does that sound?\"" +
-            "User: \"That works!\"" +
-            "Chatbot: \"Great! Here’s your payment link to get started: https://collectwise.com/payments?termLength=6&totalDebtAmount=2400&termPaymentAmount=400\"" +
-            "User: \"Thanks!\"" +
-            "Chatbot: \"You're welcome! Let us know if you need any adjustments. Have a great day!\"" +
-            "Start Negotiation"}];
-}
-
-let history:  OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [];
 
 const Chat = () => {
     const searchParams = useSearchParams();
@@ -43,76 +14,65 @@ const Chat = () => {
     const [input, setInput] = useState<string>('');
     const [url, setUrl] = useState<string>('');
     const [answer, setAnswer] = useState<string>('');
-    const messagesEndRef = useRef<HTMLDivElement | null>(null);
-
-    const scrollToBottom = () => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    };
 
     useEffect(() => {
-        scrollToBottom();
-    }, [messages, answer]);
-
-    useEffect(() => {
-        history = getHistory(searchParams.get('debt') || "2000");
-        sendMessage('Hi', true);
+        sendMessages('Hi!', searchParams.get('debt') || '2000');
     }, [searchParams]);
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setInput(e.target.value);
     };
 
-    const sendMessage = async (input: string, firstMessage?: boolean ) => {
-        const userMessage: Message = { sender: 'User', content: input };
-
-        if (!firstMessage) setMessages((prevMessages) => [...prevMessages, userMessage]);
-
-        setInput('');
-
-        history.push({role: "user", content: input})
-        try {
-            const response = await openai.chat.completions.create({
-                model: "gpt-4",
-                messages: history,
-                stream: true,
-            });
-
-            let botReply = "";
-
-            for await (const part of response) {
-                const delta = part.choices[0]?.delta?.content || "";
-                botReply += delta;
-
-                setAnswer(prev => prev + delta);
-            }
-            history.push({role: "system", content: botReply})
-            const extractPaymentUrl = (message: string): string | null => {
-                const urlRegex = /(https?:\/\/[^\s]+)/; // Matches any URL
-                const match = message.match(urlRegex);
-                return match ? match[0] : null;
-            };
-            const link = extractPaymentUrl(botReply);
-            if(link){
-                setUrl(link);
-            }
-
-            setMessages((prev) => [...prev, {
-                sender: 'GPT',
-                content: botReply,
-            }]);
-            setAnswer('');
-
-
-        } catch (error) {
-            console.error("Error with OpenAI API:", error);
-        }
-    }
-
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!input.trim()) return;
-        sendMessage(input)
+        if (!input.trim() || url) return;
+        sendMessages(input);
     };
+
+    const extractPaymentUrl = (message: string): string | null => {
+        const urlRegex = /(https?:\/\/[^\s]+)/; // Matches any URL
+        const match = message.match(urlRegex);
+        return match ? match[0] : null;
+    };
+
+    async function sendMessages(input:string, debt?: string) {
+        const userMessage: Message = { sender: "User", content: input };
+        if (!debt) setMessages((prev) => [...prev, userMessage]);
+        setInput("");
+
+        const res = await fetch("/api/chat", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ message: input, debt }),
+        });
+
+        const reader = res.body?.getReader();
+        if (!reader) return;
+
+        const decoder = new TextDecoder();
+        let text = "";
+
+        const readStream = async () => {
+            let done = false;
+            while (!done) {
+                const { done: isDone, value } = await reader.read();
+                done = isDone;
+                if (value) {
+                    text += decoder.decode(value, { stream: true });
+                    setAnswer(text);
+                }
+            }
+        };
+
+        await readStream();
+
+        const url = extractPaymentUrl(text);
+        if(url) setUrl(url);
+
+        const newBotMessage: Message = { sender: "GPT", content: text };
+        setAnswer('');
+        setMessages((prev) => [...prev, newBotMessage]);
+    }
 
     return (
         <div style={{display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2em' }}>
@@ -139,10 +99,9 @@ const Chat = () => {
                     }}>
                         <strong>GPT: </strong>{answer}
                     </div>)}
-                    {url && <a href={url} className='link'>Use this link to pay</a>}
-                    <div ref={messagesEndRef} />
+                    {url && <a className='link' href={url}>Go to pay</a>}
                 </div>
-                <form onSubmit={handleSubmit} style={{ marginTop: '8px', display: 'flex', gap: '16px', alignItems: 'center' }}>
+                <form onSubmit={handleSubmit} style={{ marginTop: '8px', display: 'flex' }}>
                     <input
                         type="text"
                         value={input}
@@ -150,7 +109,7 @@ const Chat = () => {
                         placeholder="Type your message"
                         style={{ flexGrow: 1, padding: '8px', border: '1px solid #ccc', borderRadius: '4px 0 0 4px' }}
                     />
-                    <button disabled={!!answer} type="submit" style={{ padding: '12px', backgroundColor: '#007bff', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', minWidth: '100px' }}>Send</button>
+                    <button type="submit" style={{ padding: '8px', backgroundColor: '#007bff', color: 'white', border: 'none', borderRadius: '0 4px 4px 0', cursor: 'pointer' }}>Send</button>
                 </form>
             </div>
         </div>
