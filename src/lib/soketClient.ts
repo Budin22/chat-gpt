@@ -2,4 +2,5 @@
 
 import {io} from "socket.io-client";
 
-export const socket = io();
+const url = process.env.NEXT_PUBLIC_NODE_ENV !== 'production' ? '' : process.env.NEXT_PUBLIC_SOCKET_URL;
+export const socket = io(url);

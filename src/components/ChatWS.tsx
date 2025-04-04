@@ -48,8 +48,8 @@ const Chat = () => {
 
     return (
         <div style={{display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2em' }}>
-            <div style={{ padding: '16px', border: '1px solid #ccc', borderRadius: '8px', boxShadow: '2px 2px 10px rgba(0,0,0,0.1)', width: '90%', margin: 'auto', backgroundColor:'#32343D' }}>
-                <h1 style={{ fontSize: '20px', fontWeight: 'bold', marginBottom: '8px', color: 'white' }}>Real-Time Chat with GPT</h1>
+            <div style={{ padding: '16px', border: '1px solid #ccc', borderRadius: '8px', boxShadow: '2px 2px 10px rgba(0,0,0,0.1)', width: '800px', margin: 'auto', backgroundColor:'#32343D' }}>
+                <h1 style={{ fontSize: '20px', fontWeight: 'bold', marginBottom: '8px', color: 'white' }}>Payment Negotiation</h1>
                 <div style={{ height: '600px',  overflowY: 'auto', border: '1px solid #ddd', padding: '8px', borderRadius: '6px', backgroundColor: '#f9f9f9' }}>
                     {messages.map((msg, idx) => (
                         <div key={idx} style={{

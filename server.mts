@@ -6,15 +6,16 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
-const dev = process.env.NODE_ENV !== 'production';
+const dev = process.env.NEXT_PUBLIC_NODE_ENV !== 'production';
 const hostname = process.env.HOSTNAME || 'localhost';
 const port = parseInt(process.env.PORT || "3000", 10);
 
 const app = next({ dev, hostname, port });
 const handle = app.getRequestHandler();
 
+
 const openai = new OpenAI({
-    apiKey: process.env.KEY!
+    apiKey: process.env.KEY
 });
 
 const getHistory = (debt: string):  OpenAI.Chat.Completions.ChatCompletionMessageParam[] => {
@@ -42,14 +43,13 @@ app.prepare().then(() => {
 
     const io = new Server(httpServer, {
         cors: {
-            origin: process.env.NEXT_PUBLIC_ORIGIN,
+            origin: dev ? 'http://localhost:3000' : process.env.NEXT_PUBLIC_ORIGIN,
             methods: ["GET", "POST", "WS"],
         }
     })
 
     io.on('connection', (socket) => {
         let history:  OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [];
-
 
         socket.on('start', async (debt) => {
             history = getHistory(debt);
@@ -86,7 +86,6 @@ app.prepare().then(() => {
             })
         })
     })
-
 
     httpServer.listen(port, () => {
         console.log(`Listening on port ${port}`);

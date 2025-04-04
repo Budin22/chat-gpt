@@ -6,7 +6,8 @@
     "dev": "next dev --turbopack",
     "dev:socket": "set NODE_OPTIONS=--loader ts-node/esm --trace-warnings && ts-node server.mts",
     "build": "next build",
-    "start": "next start",
+    "build:socket": "next build && tsc --project tscinfig.server.json",
+    "start": "set NODE_OPTIONS=--loader ts-node/esm --trace-warnings && ts-node server.mts",
     "lint": "next lint"
   },
   "dependencies": {
