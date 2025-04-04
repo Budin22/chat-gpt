@@ -30,7 +30,7 @@ const Chat = () => {
             }]);
             setAnswer('');
         });
-    }, []);
+    }, [searchParams]);
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setInput(e.target.value);
